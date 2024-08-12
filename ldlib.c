@@ -246,6 +246,20 @@ extern "C" void free(void *p) {
    pthread_mutex_unlock(&lock);
    }*/
    //libc_free(p);
+   if (!_in_trace && libc_free) {
+      struct log *log_arr = get_log();
+      if(log_arr) {
+         rdtscll(log_arr->rdt);
+         log_arr->addr = p;
+         log_arr->size = 0;
+         log_arr->entry_type = 2;
+         log_arr->cpu = sched_getcpu();
+         log_arr->pid = _getpid();
+         get_trace(&log_arr->callchain_size, log_arr->callchain_strings);
+      }
+   }
+
+   libc_free(p);
 }
 
 extern "C" void *calloc(size_t nmemb, size_t size) {
@@ -354,15 +368,19 @@ extern "C" void *mmap64(void *start, size_t length, int prot, int flags, int fd,
 }
 
 extern "C" int munmap(void *start, size_t length) {
+   if (!_in_trace && libc_munmap) {
+      struct log *log_arr = get_log();
+      if(log_arr) {
+         rdtscll(log_arr->rdt);
+         log_arr->addr = start;
+         log_arr->size = length;
+         log_arr->entry_type = 2;
+         log_arr->cpu = sched_getcpu();
+         log_arr->pid = _getpid();
+         get_trace(&log_arr->callchain_size, log_arr->callchain_strings);
+      }
+   }
    int addr = libc_munmap(start, length);
-   /*struct log log_arr;
-      rdtscll(log_arr.rdt);
-      log_arr.addr = start;
-      log_arr.size = length;
-      log_arr.entry_type = 2;
-      log_arr.cpu = sched_getcpu();
-      log_arr.pid = _getpid();
-   */
    return addr;
 }
 
